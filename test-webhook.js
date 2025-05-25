@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'YWVdUTYxRuS22FUARuUjug';
-const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://dannyautomation.onrender.com/webhook/zoom';
+const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://dannyautomations.onrender.com/webhook/zoom';
 
 // Create test payload
 const payload = {
