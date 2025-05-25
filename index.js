@@ -43,9 +43,17 @@ async function refreshGHLToken() {
             }
         );
 
+        // Update the refresh token in memory
+        GHL_REFRESH_TOKEN = response.data.refresh_token;
+        
+        // Store the new refresh token in the environment
+        process.env.GHL_REFRESH_TOKEN = response.data.refresh_token;
+
         ghlAccessToken = response.data.access_token;
         // Set token expiry to 19 hours (to refresh before the 20-hour limit)
         ghlTokenExpiry = Date.now() + (19 * 60 * 60 * 1000);
+        
+        console.log('Successfully refreshed GHL token');
         return ghlAccessToken;
     } catch (error) {
         console.error('Error refreshing GHL token:', error.message);
