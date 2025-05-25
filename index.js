@@ -4,6 +4,7 @@ const moment = require('moment');
 const express = require('express');
 const crypto = require('crypto');
 const qs = require('querystring');
+const { MongoClient } = require('mongodb');
 const app = express();
 app.use(express.json());
 
@@ -18,7 +19,7 @@ const ZOOM_API_URL = 'https://api.zoom.us/v2';
 // GHL Configuration
 const GHL_CLIENT_ID = process.env.GHL_CLIENT_ID;
 const GHL_CLIENT_SECRET = process.env.GHL_CLIENT_SECRET;
-let GHL_REFRESH_TOKEN = process.env.GHL_REFRESH_TOKEN || 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRoQ2xhc3MiOiJDb21wYW55IiwiYXV0aENsYXNzSWQiOiJBYWx3ejQyblBIeld1c1NsZUxUOCIsInNvdXJjZSI6IklOVEVHUkFUSU9OIiwic291cmNlSWQiOiI2NzI4Zjc1OWJjOWY5ZjhhOTcyMzQ3YWEtbWI0OXM3cXQiLCJjaGFubmVsIjoiT0FVVEgiLCJwcmltYXJ5QXV0aENsYXNzSWQiOiJBYWx3ejQyblBIeld1c1NsZUxUOCIsIm9hdXRoTWV0YSI6eyJzY29wZXMiOlsic2Fhcy9jb21wYW55LnJlYWQiLCJzYWFzL2NvbXBhbnkud3JpdGUiLCJsb2NhdGlvbnMud3JpdGUiLCJsb2NhdGlvbnMucmVhZG9ubHkiLCJidXNpbmVzc2VzLndyaXRlIiwiYnVzaW5lc3Nlcy5yZWFkb25seSIsImNvbXBhbmllcy5yZWFkb25seSIsImNhbGVuZGFycy5yZWFkb25seSIsImNhbGVuZGFycy53cml0ZSIsImNhbGVuZGFycy9ldmVudHMucmVhZG9ubHkiLCJjYWxlbmRhcnMvZXZlbnRzLndyaXRlIiwiY2FsZW5kYXJzL2dyb3Vwcy5yZWFkb25seSIsImNhbGVuZGFycy9ncm91cHMud3JpdGUiLCJzb2NpYWxwbGFubmVyL3RhZy53cml0ZSIsInNvY2lhbHBsYW5uZXIvY2F0ZWdvcnkud3JpdGUiLCJibG9ncy9hdXRob3IucmVhZG9ubHkiLCJibG9ncy9jYXRlZ29yeS5yZWFkb25seSIsImJsb2dzL2NoZWNrLXNsdWcucmVhZG9ubHkiLCJibG9ncy9wb3N0LndyaXRlIiwiYmxvZ3MvcG9zdC11cGRhdGUud3JpdGUiLCJ3b3JkcHJlc3Muc2l0ZS5yZWFkb25seSIsIndvcmtmbG93cy5yZWFkb25seSIsInVzZXJzLndyaXRlIiwidXNlcnMucmVhZG9ubHkiLCJzdXJ2ZXlzLnJlYWRvbmx5Iiwic3RvcmUvc2V0dGluZy53cml0ZSIsInN0b3JlL3NldHRpbmcucmVhZG9ubHkiLCJzdG9yZS9zaGlwcGluZy53cml0ZSIsInN0b3JlL3NoaXBwaW5nLnJlYWRvbmx5Iiwic29jaWFscGxhbm5lci90YWcucmVhZG9ubHkiLCJzb2NpYWxwbGFubmVyL2NhdGVnb3J5LnJlYWRvbmx5Iiwic29jaWFscGxhbm5lci9jc3Yud3JpdGUiLCJzb2NpYWxwbGFubmVyL2Nzdi5yZWFkb25seSIsInNvY2lhbHBsYW5uZXIvYWNjb3VudC53cml0ZSIsInNvY2lhbHBsYW5uZXIvYWNjb3VudC5yZWFkb25seSIsInNvY2lhbHBsYW5uZXIvcG9zdC53cml0ZSIsInNvY2lhbHBsYW5uZXIvcG9zdC5yZWFkb25seSIsInNvY2lhbHBsYW5uZXIvb2F1dGgud3JpdGUiLCJzb2NpYWxwbGFubmVyL29hdXRoLnJlYWRvbmx5Iiwic25hcHNob3RzLndyaXRlIiwic25hcHNob3RzLnJlYWRvbmx5Iiwic2Fhcy9sb2NhdGlvbi53cml0ZSIsInNhYXMvbG9jYXRpb24ucmVhZCIsInByb2R1Y3RzL2NvbGxlY3Rpb24ud3JpdGUiLCJwcm9kdWN0cy9jb2xsZWN0aW9uLnJlYWRvbmx5IiwicHJvZHVjdHMvcHJpY2VzLndyaXRlIiwicHJvZHVjdHMvcHJpY2VzLnJlYWRvbmx5IiwicHJvZHVjdHMud3JpdGUiLCJwcm9kdWN0cy5yZWFkb25seSIsInBheW1lbnRzL2N1c3RvbS1wcm92aWRlci53cml0ZSIsInBheW1lbnRzL2N1c3RvbS1wcm92aWRlci5yZWFkb25seSIsInBheW1lbnRzL3N1YnNjcmlwdGlvbnMucmVhZG9ubHkiLCJwYXltZW50cy90cmFuc2FjdGlvbnMucmVhZG9ubHkiLCJwYXltZW50cy9pbnRlZ3JhdGlvbi53cml0ZSIsInBheW1lbnRzL2ludGVncmF0aW9uLnJlYWRvbmx5IiwicGF5bWVudHMvb3JkZXJzLndyaXRlIiwicGF5bWVudHMvb3JkZXJzLnJlYWRvbmx5Iiwib3Bwb3J0dW5pdGllcy53cml0ZSIsIm9wcG9ydHVuaXRpZXMucmVhZG9ubHkiLCJvYXV0aC5yZWFkb25seSIsIm9hdXRoLndyaXRlIiwiZnVubmVscy9yZWRpcmVjdC53cml0ZSIsImZ1bm5lbHMvcGFnZWNvdW50LnJlYWRvbmx5IiwiZnVubmVscy9mdW5uZWwucmVhZG9ubHkiLCJmdW5uZWxzL3BhZ2UucmVhZG9ubHkiLCJmdW5uZWxzL3JlZGlyZWN0LnJlYWRvbmx5IiwibWVkaWFzLndyaXRlIiwibWVkaWFzLnJlYWRvbmx5IiwibG9jYXRpb25zL3RlbXBsYXRlcy5yZWFkb25seSIsImxvY2F0aW9ucy90YWdzLndyaXRlIiwibG9jYXRpb25zL3RhZ3MucmVhZG9ubHkiLCJsb2NhdGlvbnMvdGFza3Mud3JpdGUiLCJsb2NhdGlvbnMvY3VzdG9tRmllbGRzLndyaXRlIiwibG9jYXRpb25zL3Rhc2tzLnJlYWRvbmx5IiwibG9jYXRpb25zL2N1c3RvbUZpZWxkcy5yZWFkb25seSIsImxvY2F0aW9ucy9jdXN0b21WYWx1ZXMud3JpdGUiLCJsb2NhdGlvbnMvY3VzdG9tVmFsdWVzLnJlYWRvbmx5IiwibGlua3Mud3JpdGUiLCJsYy1lbWFpbC5yZWFkb25seSIsImxpbmtzLnJlYWRvbmx5IiwiaW52b2ljZXMvdGVtcGxhdGUud3JpdGUiLCJpbnZvaWNlcy90ZW1wbGF0ZS5yZWFkb25seSIsImludm9pY2VzL3NjaGVkdWxlLndyaXRlIiwiaW52b2ljZXMvc2NoZWR1bGUucmVhZG9ubHkiLCJpbnZvaWNlcy53cml0ZSIsImludm9pY2VzLnJlYWRvbmx5IiwiZm9ybXMud3JpdGUiLCJmb3Jtcy5yZWFkb25seSIsImNvdXJzZXMucmVhZG9ubHkiLCJjb3Vyc2VzLndyaXRlIiwib2JqZWN0cy9yZWNvcmQud3JpdGUiLCJvYmplY3RzL3JlY29yZC5yZWFkb25seSIsIm9iamVjdHMvc2NoZW1hLndyaXRlIiwib2JqZWN0cy9zY2hlbWEucmVhZG9ubHkiLCJjb250YWN0cy53cml0ZSIsImNvbnRhY3RzLnJlYWRvbmx5IiwiY29udmVyc2F0aW9ucy9yZXBvcnRzLnJlYWRvbmx5IiwiY29udmVyc2F0aW9ucy9tZXNzYWdlLndyaXRlIiwiY29udmVyc2F0aW9ucy9tZXNzYWdlLnJlYWRvbmx5IiwiY29udmVyc2F0aW9ucy53cml0ZSIsImNvbnZlcnNhdGlvbnMucmVhZG9ubHkiLCJjYW1wYWlnbnMucmVhZG9ubHkiLCJjYWxlbmRhcnMvcmVzb3VyY2VzLndyaXRlIiwiY2FsZW5kYXJzL3Jlc291cmNlcy5yZWFkb25seSJdLCJjbGllbnQiOiI2NzI4Zjc1OWJjOWY5ZjhhOTcyMzQ3YWEiLCJ2ZXJzaW9uSWQiOiI2NzI4Zjc1OWJjOWY5ZjhhOTcyMzQ3YWEiLCJjbGllbnRLZXkiOiI2NzI4Zjc1OWJjOWY5ZjhhOTcyMzQ3YWEtbWI0OXM3cXQifSwiaWF0IjoxNzQ4MjE1Nzc3LjIwMiwiZXhwIjoxNzc5NzUxNzc3LjIwMiwidW5pcXVlSWQiOiIwODlmNTQ1NC1hM2Q3LTQxMGEtYjlhZS1iM2QxMTY2YjYyMDgiLCJ2IjoiMiJ9.RpHj2COLVVnb_YA0PPhKywa9Srqp2W7l8VQy-ZbCEATkdbyuuuV3sJjph2Z_ziM8n8xxoS8BvsEIlvI5Ebocda8cFycpeo-HiVHx7bl2VPkuMgtlqcD5F_INgudgYUmH3V8u0NlrtfuEIxnK_JEai_7YnrbgNH-UqW_2ryP6TPh1ChKLP1w6S_0yz2mQkX5qLZlFdHKGBQEmH-fYzuKny_qw30VzCvXfaHmGHoXv2wMNBu3Z7L9QJxtIpeacdW62mIJKAoamwKluyz14tD_SgopGofUiamkpfK9OVkDxbyGiFFuuDvBzouHdRIsWegKQiN9RBsH6QOvVnZ0NY4TKB7Xt4Rzam2lL14y_LVyzshvkpYZJSz1-8zon_suamyDV8V8SwQ5JlXP3uNwH2wtOCmAqTbSFFI93njTq71TmRWJJmFLKr6_PjJepC9uE5nSujnI-OczTtqUIFKf1ptgxnvejyT0-gVYOyXqYIgEV-8VUq-YKHEjHNiKfgw5zMn_y9AGLFv2X85wMDvQnyenD6FzMhdjp83iDkuGKZyZ6SpkgcyWFnZ3CUla46VKPHh_zhDQpZCGM-Zlue0c1q8_uWuI7EsOEfAHYOvueK3GnzJVDbCnfF-zSk8tn7Qoq3iwYQ_XWgtOPXXxILEKZdN92iKbnIo8htAQBxJDkn3ze-A0';
+const GHL_REFRESH_TOKEN = process.env.GHL_REFRESH_TOKEN || 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRoQ2xhc3MiOiJDb21wYW55IiwiYXV0aENsYXNzSWQiOiJBYWx3ejQyblBIeld1c1NsZUxUOCIsInNvdXJjZSI6IklOVEVHUkFUSU9OIiwic291cmNlSWQiOiI2NzI4Zjc1OWJjOWY5ZjhhOTcyMzQ3YWEtbWI0OXM3cXQiLCJjaGFubmVsIjoiT0FVVEgiLCJwcmltYXJ5QXV0aENsYXNzSWQiOiJBYWx3ejQyblBIeld1c1NsZUxUOCIsIm9hdXRoTWV0YSI6eyJzY29wZXMiOlsic2Fhcy9jb21wYW55LnJlYWQiLCJzYWFzL2NvbXBhbnkud3JpdGUiLCJsb2NhdGlvbnMud3JpdGUiLCJsb2NhdGlvbnMucmVhZG9ubHkiLCJidXNpbmVzc2VzLndyaXRlIiwiYnVzaW5lc3Nlcy5yZWFkb25seSIsImNvbXBhbmllcy5yZWFkb25seSIsImNhbGVuZGFycy5yZWFkb25seSIsImNhbGVuZGFycy53cml0ZSIsImNhbGVuZGFycy9ldmVudHMucmVhZG9ubHkiLCJjYWxlbmRhcnMvZXZlbnRzLndyaXRlIiwiY2FsZW5kYXJzL2dyb3Vwcy5yZWFkb25seSIsImNhbGVuZGFycy9ncm91cHMud3JpdGUiLCJzb2NpYWxwbGFubmVyL3RhZy53cml0ZSIsInNvY2lhbHBsYW5uZXIvY2F0ZWdvcnkud3JpdGUiLCJibG9ncy9hdXRob3IucmVhZG9ubHkiLCJibG9ncy9jYXRlZ29yeS5yZWFkb25seSIsImJsb2dzL2NoZWNrLXNsdWcucmVhZG9ubHkiLCJibG9ncy9wb3N0LndyaXRlIiwiYmxvZ3MvcG9zdC11cGRhdGUud3JpdGUiLCJ3b3JkcHJlc3Muc2l0ZS5yZWFkb25seSIsIndvcmtmbG93cy5yZWFkb25seSIsInVzZXJzLndyaXRlIiwidXNlcnMucmVhZG9ubHkiLCJzdXJ2ZXlzLnJlYWRvbmx5Iiwic3RvcmUvc2V0dGluZy53cml0ZSIsInN0b3JlL3NldHRpbmcucmVhZG9ubHkiLCJzdG9yZS9zaGlwcGluZy53cml0ZSIsInN0b3JlL3NoaXBwaW5nLnJlYWRvbmx5Iiwic29jaWFscGxhbm5lci90YWcucmVhZG9ubHkiLCJzb2NpYWxwbGFubmVyL2NhdGVnb3J5LnJlYWRvbmx5Iiwic29jaWFscGxhbm5lci9jc3Yud3JpdGUiLCJzb2NpYWxwbGFubmVyL2Nzdi5yZWFkb25seSIsInNvY2lhbHBsYW5uZXIvYWNjb3VudC53cml0ZSIsInNvY2lhbHBsYW5uZXIvYWNjb3VudC5yZWFkb25seSIsInNvY2lhbHBsYW5uZXIvcG9zdC53cml0ZSIsInNvY2lhbHBsYW5uZXIvcG9zdC5yZWFkb25seSIsInNvY2lhbHBsYW5uZXIvb2F1dGgud3JpdGUiLCJzb2NpYWxwbGFubmVyL29hdXRoLnJlYWRvbmx5Iiwic25hcHNob3RzLndyaXRlIiwic25hcHNob3RzLnJlYWRvbmx5Iiwic2Fhcy9sb2NhdGlvbi53cml0ZSIsInNhYXMvbG9jYXRpb24ucmVhZCIsInByb2R1Y3RzL2NvbGxlY3Rpb24ud3JpdGUiLCJwcm9kdWN0cy9jb2xsZWN0aW9uLnJlYWRvbmx5IiwicHJvZHVjdHMvcHJpY2VzLndyaXRlIiwicHJvZHVjdHMvcHJpY2VzLnJlYWRvbmx5IiwicHJvZHVjdHMud3JpdGUiLCJwcm9kdWN0cy5yZWFkb25seSIsInBheW1lbnRzL2N1c3RvbS1wcm92aWRlci53cml0ZSIsInBheW1lbnRzL2N1c3RvbS1wcm92aWRlci5yZWFkb25seSIsInBheW1lbnRzL3N1YnNjcmlwdGlvbnMucmVhZG9ubHkiLCJwYXltZW50cy90cmFuc2FjdGlvbnMucmVhZG9ubHkiLCJwYXltZW50cy9pbnRlZ3JhdGlvbi53cml0ZSIsInBheW1lbnRzL2ludGVncmF0aW9uLnJlYWRvbmx5IiwicGF5bWVudHMvb3JkZXJzLndyaXRlIiwicGF5bWVudHMvb3JkZXJzLnJlYWRvbmx5Iiwib3Bwb3J0dW5pdGllcy53cml0ZSIsIm9wcG9ydHVuaXRpZXMucmVhZG9ubHkiLCJvYXV0aC5yZWFkb25seSIsIm9hdXRoLndyaXRlIiwiZnVubmVscy9yZWRpcmVjdC53cml0ZSIsImZ1bm5lbHMvcGFnZWNvdW50LnJlYWRvbmx5IiwiZnVubmVscy9mdW5uZWwucmVhZG9ubHkiLCJmdW5uZWxzL3BhZ2UucmVhZG9ubHkiLCJmdW5uZWxzL3JlZGlyZWN0LnJlYWRvbmx5IiwibWVkaWFzLndyaXRlIiwibWVkaWFzLnJlYWRvbmx5IiwibG9jYXRpb25zL3RlbXBsYXRlcy5yZWFkb25seSIsImxvY2F0aW9ucy90YWdzLndyaXRlIiwibG9jYXRpb25zL3RhZ3MucmVhZG9ubHkiLCJsb2NhdGlvbnMvdGFza3Mud3JpdGUiLCJsb2NhdGlvbnMvY3VzdG9tRmllbGRzLndyaXRlIiwibG9jYXRpb25zL3Rhc2tzLnJlYWRvbmx5IiwibG9jYXRpb25zL2N1c3RvbUZpZWxkcy5yZWFkb25seSIsImxvY2F0aW9ucy9jdXN0b21WYWx1ZXMud3JpdGUiLCJsb2NhdGlvbnMvY3VzdG9tVmFsdWVzLnJlYWRvbmx5IiwibGlua3Mud3JpdGUiLCJsYy1lbWFpbC5yZWFkb25seSIsImxpbmtzLnJlYWRvbmx5IiwiaW52b2ljZXMvdGVtcGxhdGUud3JpdGUiLCJpbnZvaWNlcy90ZW1wbGF0ZS5yZWFkb25seSIsImludm9pY2VzL3NjaGVkdWxlLndyaXRlIiwiaW52b2ljZXMvc2NoZWR1bGUucmVhZG9ubHkiLCJpbnZvaWNlcy53cml0ZSIsImludm9pY2VzLnJlYWRvbmx5IiwiZm9ybXMud3JpdGUiLCJmb3Jtcy5yZWFkb25seSIsImNvdXJzZXMucmVhZG9ubHkiLCJjb3Vyc2VzLndyaXRlIiwib2JqZWN0cy9yZWNvcmQud3JpdGUiLCJvYmplY3RzL3JlY29yZC5yZWFkb25seSIsIm9iamVjdHMvc2NoZW1hLndyaXRlIiwib2JqZWN0cy9zY2hlbWEucmVhZG9ubHkiLCJjb250YWN0cy53cml0ZSIsImNvbnRhY3RzLnJlYWRvbmx5IiwiY29udmVyc2F0aW9ucy9yZXBvcnRzLnJlYWRvbmx5IiwiY29udmVyc2F0aW9ucy9tZXNzYWdlLndyaXRlIiwiY29udmVyc2F0aW9ucy9tZXNzYWdlLnJlYWRvbmx5IiwiY29udmVyc2F0aW9ucy53cml0ZSIsImNvbnZlcnNhdGlvbnMucmVhZG9ubHkiLCJjYW1wYWlnbnMucmVhZG9ubHkiLCJjYWxlbmRhcnMvcmVzb3VyY2VzLndyaXRlIiwiY2FsZW5kYXJzL3Jlc291cmNlcy5yZWFkb25seSJdLCJjbGllbnQiOiI2NzI4Zjc1OWJjOWY5ZjhhOTcyMzQ3YWEiLCJ2ZXJzaW9uSWQiOiI2NzI4Zjc1OWJjOWY5ZjhhOTcyMzQ3YWEiLCJjbGllbnRLZXkiOiI2NzI4Zjc1OWJjOWY5ZjhhOTcyMzQ3YWEtbWI0OXM3cXQifSwiaWF0IjoxNzQ4MjE1Nzc3LjIwMiwiZXhwIjoxNzc5NzUxNzc3LjIwMiwidW5pcXVlSWQiOiIwODlmNTQ1NC1hM2Q3LTQxMGEtYjlhZS1iM2QxMTY2YjYyMDgiLCJ2IjoiMiJ9.RpHj2COLVVnb_YA0PPhKywa9Srqp2W7l8VQy-ZbCEATkdbyuuuV3sJjph2Z_ziM8n8xxoS8BvsEIlvI5Ebocda8cFycpeo-HiVHx7bl2VPkuMgtlqcD5F_INgudgYUmH3V8u0NlrtfuEIxnK_JEai_7YnrbgNH-UqW_2ryP6TPh1ChKLP1w6S_0yz2mQkX5qLZlFdHKGBQEmH-fYzuKny_qw30VzCvXfaHmGHoXv2wMNBu3Z7L9QJxtIpeacdW62mIJKAoamwKluyz14tD_SgopGofUiamkpfK9OVkDxbyGiFFuuDvBzouHdRIsWegKQiN9RBsH6QOvVnZ0NY4TKB7Xt4Rzam2lL14y_LVyzshvkpYZJSz1-8zon_suamyDV8V8SwQ5JlXP3uNwH2wtOCmAqTbSFFI93njTq71TmRWJJmFLKr6_PjJepC9uE5nSujnI-OczTtqUIFKf1ptgxnvejyT0-gVYOyXqYIgEV-8VUq-YKHEjHNiKfgw5zMn_y9AGLFv2X85wMDvQnyenD6FzMhdjp83iDkuGKZyZ6SpkgcyWFnZ3CUla46VKPHh_zhDQpZCGM-Zlue0c1q8_uWuI7EsOEfAHYOvueK3GnzJVDbCnfF-zSk8tn7Qoq3iwYQ_XWgtOPXXxILEKZdN92iKbnIo8htAQBxJDkn3ze-A0';
 const GHL_COMPANY_ID = process.env.GHL_COMPANY_ID;
 const GHL_API_URL = 'https://services.leadconnectorhq.com';
 
@@ -26,17 +27,69 @@ const GHL_API_URL = 'https://services.leadconnectorhq.com';
 let ghlAccessToken = null;
 let ghlTokenExpiry = null;
 
+// MongoDB Configuration
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const DB_NAME = 'dannyautomation';
+const TOKENS_COLLECTION = 'tokens';
+
+let db;
+let tokensCollection;
+
+// Initialize MongoDB connection
+async function initMongoDB() {
+    try {
+        const client = await MongoClient.connect(MONGODB_URI);
+        db = client.db(DB_NAME);
+        tokensCollection = db.collection(TOKENS_COLLECTION);
+        console.log('Connected to MongoDB');
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+        process.exit(1);
+    }
+}
+
+// Function to get the stored refresh token
+async function getStoredRefreshToken() {
+    try {
+        const tokenDoc = await tokensCollection.findOne({ type: 'ghl_refresh_token' });
+        return tokenDoc ? tokenDoc.token : null;
+    } catch (error) {
+        console.error('Error getting stored refresh token:', error);
+        return null;
+    }
+}
+
+// Function to store the refresh token
+async function storeRefreshToken(token) {
+    try {
+        await tokensCollection.updateOne(
+            { type: 'ghl_refresh_token' },
+            { $set: { token, updatedAt: new Date() } },
+            { upsert: true }
+        );
+        console.log('Successfully stored new refresh token');
+    } catch (error) {
+        console.error('Error storing refresh token:', error);
+        throw error;
+    }
+}
+
 async function refreshGHLToken() {
     try {
         console.log('Attempting to refresh GHL token...');
-        console.log('Using refresh token:', GHL_REFRESH_TOKEN.substring(0, 10) + '...');
+        
+        // Get the stored refresh token from the database
+        const storedToken = await getStoredRefreshToken();
+        const refreshToken = storedToken || GHL_REFRESH_TOKEN;
+        
+        console.log('Using refresh token:', refreshToken.substring(0, 10) + '...');
         
         const response = await axios.post(
             'https://services.leadconnectorhq.com/oauth/token',
             qs.stringify({
                 client_id: GHL_CLIENT_ID,
                 client_secret: GHL_CLIENT_SECRET,
-                refresh_token: GHL_REFRESH_TOKEN,
+                refresh_token: refreshToken,
                 grant_type: 'refresh_token'
             }),
             {
@@ -46,12 +99,11 @@ async function refreshGHLToken() {
             }
         );
 
-        // Update the refresh token in memory
+        // Store the new refresh token in the database
         const newRefreshToken = response.data.refresh_token;
         console.log('Received new refresh token:', newRefreshToken.substring(0, 10) + '...');
         
-        GHL_REFRESH_TOKEN = newRefreshToken;
-        process.env.GHL_REFRESH_TOKEN = newRefreshToken;
+        await storeRefreshToken(newRefreshToken);
 
         ghlAccessToken = response.data.access_token;
         // Set token expiry to 19 hours (to refresh before the 20-hour limit)
@@ -288,8 +340,13 @@ app.post('/webhook/zoom', async (req, res) => {
 
 // Start the server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+initMongoDB().then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+}).catch(error => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
 });
 
 // Export functions for testing

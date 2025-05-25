@@ -24,7 +24,27 @@ const payload = {
             timezone: 'UTC',
             created_at: '2025-05-25T22:42:02.902Z',
             join_url: 'https://us02web.zoom.us/j/88909202515'
-        }
+        },
+        participants: [
+            {
+                id: 'test-participant-1',
+                user_id: 'test-user-1',
+                name: 'Test User 1',
+                user_email: 'test1@example.com',
+                join_time: '2025-05-25T22:42:02.902Z',
+                leave_time: '2025-05-25T23:42:02.902Z',
+                duration: 60
+            },
+            {
+                id: 'test-participant-2',
+                user_id: 'test-user-2',
+                name: 'Test User 2',
+                user_email: 'test2@example.com',
+                join_time: '2025-05-25T22:42:02.902Z',
+                leave_time: '2025-05-25T23:42:02.902Z',
+                duration: 60
+            }
+        ]
     }
 };
 
