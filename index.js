@@ -230,20 +230,9 @@ app.get('/', (req, res) => {
 // Webhook endpoint for Zoom events
 app.post('/webhook/zoom', async (req, res) => {
     try {
-        // Verify webhook signature
-        const signature = req.headers['x-zoom-signature'];
-        const timestamp = req.headers['x-zoom-timestamp'];
-        
-        if (!verifyWebhookSignature(req.body, signature, timestamp)) {
-            console.error('Invalid webhook signature');
-            return res.status(401).send('Invalid signature');
-        }
-
-        const { event, payload } = req.body;
-
         // Handle webhook verification
-        if (event === 'endpoint.url_validation') {
-            const plainToken = payload.plainToken;
+        if (req.body.event === 'endpoint.url_validation') {
+            const plainToken = req.body.payload.plainToken;
             const encryptedToken = crypto
                 .createHmac('sha256', ZOOM_WEBHOOK_SECRET)
                 .update(plainToken)
@@ -254,6 +243,17 @@ app.post('/webhook/zoom', async (req, res) => {
                 encryptedToken
             });
         }
+
+        // Verify webhook signature for other events
+        const signature = req.headers['x-zoom-signature'];
+        const timestamp = req.headers['x-zoom-timestamp'];
+        
+        if (!verifyWebhookSignature(req.body, signature, timestamp)) {
+            console.error('Invalid webhook signature');
+            return res.status(401).send('Invalid signature');
+        }
+
+        const { event, payload } = req.body;
 
         // Check if this is a webinar ended event
         if (event === 'webinar.ended') {
