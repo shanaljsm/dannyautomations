@@ -6,12 +6,16 @@ services:
     startCommand: node index.js
     envVars:
       - key: ZOOM_API_KEY
-        value: ne0KPBrtRnK3ejMdzsO9uw
+        sync: false
       - key: ZOOM_API_SECRET
-        value: pgWL8dT4497Vjhi21QNdzjdwHg9AAG6M
+        sync: false
       - key: ZOOM_ACCOUNT_ID
-        value: DaTVV21nRgK5eOOXVfA_tw
+        sync: false
       - key: ZOOM_WEBHOOK_SECRET
-        value: YWVdUTYxRuS22FUARuUjug
+        sync: false
       - key: ZOOM_VERIFICATION_TOKEN
-        value: mqpueaa_TlavuLnSArWlXQ 
+        sync: false
+      - key: GHL_API_KEY
+        sync: false
+      - key: GHL_LOCATION_ID
+        sync: false 
