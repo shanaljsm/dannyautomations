@@ -19,7 +19,7 @@ const GHL_CLIENT_ID = process.env.GHL_CLIENT_ID;
 const GHL_CLIENT_SECRET = process.env.GHL_CLIENT_SECRET;
 const GHL_REFRESH_TOKEN = process.env.GHL_REFRESH_TOKEN;
 const GHL_COMPANY_ID = process.env.GHL_COMPANY_ID;
-const GHL_API_URL = 'https://services.gohighlevel.com/v2';
+const GHL_API_URL = 'https://services.leadconnectorhq.com';
 
 // GHL Token Management
 let ghlAccessToken = null;
@@ -27,7 +27,7 @@ let ghlTokenExpiry = null;
 
 async function refreshGHLToken() {
     try {
-        const response = await axios.post('https://services.gohighlevel.com/oauth/token', {
+        const response = await axios.post('https://services.leadconnectorhq.com/oauth/token', {
             client_id: GHL_CLIENT_ID,
             client_secret: GHL_CLIENT_SECRET,
             refresh_token: GHL_REFRESH_TOKEN,
@@ -130,25 +130,10 @@ async function addContactsToGHL(emails) {
     try {
         const token = await getGHLToken();
 
-        // First, ensure the tag exists
-        await axios.post(
-            `${GHL_API_URL}/tags/`,
-            { 
-                name: tag,
-                companyId: GHL_COMPANY_ID
-            },
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
-        // Add contacts with the tag
+        // Add contacts with the tag using upsert
         for (const email of emails) {
             await axios.post(
-                `${GHL_API_URL}/contacts/`,
+                `${GHL_API_URL}/contacts/upsert`,
                 {
                     email,
                     tags: [tag],
@@ -175,47 +160,25 @@ async function addContactToGHL(email, name, webinarDate) {
         const token = await getGHLToken();
         const tag = `Webinar Attendee ${webinarDate}`;
 
-        // First, check if contact exists
-        const searchResponse = await axios.get(`${GHL_API_URL}/contacts/lookup?email=${email}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+        // Use upsert to create or update contact
+        const response = await axios.post(
+            `${GHL_API_URL}/contacts/upsert`,
+            {
+                email,
+                name,
+                tags: [tag],
+                companyId: GHL_COMPANY_ID
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
             }
-        });
-
-        let contactId;
-        if (searchResponse.data.contacts && searchResponse.data.contacts.length > 0) {
-            // Contact exists, update it
-            contactId = searchResponse.data.contacts[0].id;
-            await axios.put(`${GHL_API_URL}/contacts/${contactId}`, {
-                email: email,
-                name: name,
-                tags: [tag],
-                companyId: GHL_COMPANY_ID
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-        } else {
-            // Create new contact
-            const createResponse = await axios.post(`${GHL_API_URL}/contacts/`, {
-                email: email,
-                name: name,
-                tags: [tag],
-                companyId: GHL_COMPANY_ID
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            contactId = createResponse.data.id;
-        }
+        );
 
         console.log(`Contact ${email} added/updated in GHL with tag: ${tag}`);
-        return contactId;
+        return response.data.id;
     } catch (error) {
         console.error('Error adding contact to GHL:', error.message);
         throw error;
@@ -273,6 +236,14 @@ app.post('/webhook/zoom', async (req, res) => {
         res.status(200).send('Webhook processed successfully');
     } catch (error) {
         console.error('Error processing webhook:', error);
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            response: error.response ? {
+                status: error.response.status,
+                data: error.response.data
+            } : null
+        });
         res.status(500).send('Error processing webhook');
     }
 });
