@@ -4,6 +4,7 @@ const moment = require('moment');
 const express = require('express');
 const crypto = require('crypto');
 const app = express();
+app.use(express.json());
 
 // Configuration
 const ZOOM_API_KEY = process.env.ZOOM_API_KEY;
@@ -12,12 +13,43 @@ const ZOOM_ACCOUNT_ID = process.env.ZOOM_ACCOUNT_ID;
 const ZOOM_WEBHOOK_SECRET = process.env.ZOOM_WEBHOOK_SECRET;
 const ZOOM_VERIFICATION_TOKEN = process.env.ZOOM_VERIFICATION_TOKEN;
 const ZOOM_API_URL = 'https://api.zoom.us/v2';
-const GHL_API_KEY = process.env.GHL_API_KEY;
-const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
+
+// GHL Configuration
+const GHL_CLIENT_ID = process.env.GHL_CLIENT_ID;
+const GHL_CLIENT_SECRET = process.env.GHL_CLIENT_SECRET;
+const GHL_REFRESH_TOKEN = process.env.GHL_REFRESH_TOKEN;
+const GHL_COMPANY_ID = process.env.GHL_COMPANY_ID;
 const GHL_API_URL = 'https://rest.gohighlevel.com/v1';
 
-// Express middleware
-app.use(express.json());
+// GHL Token Management
+let ghlAccessToken = null;
+let ghlTokenExpiry = null;
+
+async function refreshGHLToken() {
+    try {
+        const response = await axios.post('https://services.gohighlevel.com/oauth/token', {
+            client_id: GHL_CLIENT_ID,
+            client_secret: GHL_CLIENT_SECRET,
+            refresh_token: GHL_REFRESH_TOKEN,
+            grant_type: 'refresh_token'
+        });
+
+        ghlAccessToken = response.data.access_token;
+        // Set token expiry to 19 hours (to refresh before the 20-hour limit)
+        ghlTokenExpiry = Date.now() + (19 * 60 * 60 * 1000);
+        return ghlAccessToken;
+    } catch (error) {
+        console.error('Error refreshing GHL token:', error.message);
+        throw error;
+    }
+}
+
+async function getGHLToken() {
+    if (!ghlAccessToken || Date.now() >= ghlTokenExpiry) {
+        await refreshGHLToken();
+    }
+    return ghlAccessToken;
+}
 
 // Function to verify Zoom webhook signature
 function verifyWebhookSignature(payload, signature, timestamp) {
@@ -96,13 +128,15 @@ async function addContactsToGHL(emails) {
     const tag = `webinar-gift-${currentDate}`;
 
     try {
+        const token = await getGHLToken();
+
         // First, ensure the tag exists
         await axios.post(
             `${GHL_API_URL}/tags/`,
             { name: tag },
             {
                 headers: {
-                    'Authorization': `Bearer ${GHL_API_KEY}`,
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             }
@@ -115,11 +149,11 @@ async function addContactsToGHL(emails) {
                 {
                     email,
                     tags: [tag],
-                    locationId: GHL_LOCATION_ID
+                    companyId: GHL_COMPANY_ID
                 },
                 {
                     headers: {
-                        'Authorization': `Bearer ${GHL_API_KEY}`,
+                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 }
@@ -129,6 +163,56 @@ async function addContactsToGHL(emails) {
         console.log(`Successfully added ${emails.length} contacts to GHL with tag: ${tag}`);
     } catch (error) {
         console.error('Error adding contacts to GHL:', error.message);
+        throw error;
+    }
+}
+
+async function addContactToGHL(email, name, webinarDate) {
+    try {
+        const token = await getGHLToken();
+        const tag = `Webinar Attendee ${webinarDate}`;
+
+        // First, check if contact exists
+        const searchResponse = await axios.get(`https://rest.gohighlevel.com/v1/contacts/lookup?email=${email}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        let contactId;
+        if (searchResponse.data.contacts && searchResponse.data.contacts.length > 0) {
+            // Contact exists, update it
+            contactId = searchResponse.data.contacts[0].id;
+            await axios.put(`https://rest.gohighlevel.com/v1/contacts/${contactId}`, {
+                email: email,
+                name: name,
+                tags: [tag]
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+        } else {
+            // Create new contact
+            const createResponse = await axios.post('https://rest.gohighlevel.com/v1/contacts/', {
+                email: email,
+                name: name,
+                tags: [tag]
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            contactId = createResponse.data.id;
+        }
+
+        console.log(`Contact ${email} added/updated in GHL with tag: ${tag}`);
+        return contactId;
+    } catch (error) {
+        console.error('Error adding contact to GHL:', error.message);
         throw error;
     }
 }
