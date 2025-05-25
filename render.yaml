@@ -15,6 +15,14 @@ services:
         sync: false
       - key: ZOOM_VERIFICATION_TOKEN
         sync: false
+      - key: GHL_CLIENT_ID
+        sync: false
+      - key: GHL_CLIENT_SECRET
+        sync: false
+      - key: GHL_REFRESH_TOKEN
+        sync: false
+      - key: GHL_COMPANY_ID
+        sync: false
       - key: GHL_API_KEY
         sync: false
       - key: GHL_LOCATION_ID
