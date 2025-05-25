@@ -28,6 +28,9 @@ let ghlTokenExpiry = null;
 
 async function refreshGHLToken() {
     try {
+        console.log('Attempting to refresh GHL token...');
+        console.log('Using refresh token:', GHL_REFRESH_TOKEN.substring(0, 10) + '...');
+        
         const response = await axios.post(
             'https://services.leadconnectorhq.com/oauth/token',
             qs.stringify({
@@ -44,10 +47,11 @@ async function refreshGHLToken() {
         );
 
         // Update the refresh token in memory
-        GHL_REFRESH_TOKEN = response.data.refresh_token;
+        const newRefreshToken = response.data.refresh_token;
+        console.log('Received new refresh token:', newRefreshToken.substring(0, 10) + '...');
         
-        // Store the new refresh token in the environment
-        process.env.GHL_REFRESH_TOKEN = response.data.refresh_token;
+        GHL_REFRESH_TOKEN = newRefreshToken;
+        process.env.GHL_REFRESH_TOKEN = newRefreshToken;
 
         ghlAccessToken = response.data.access_token;
         // Set token expiry to 19 hours (to refresh before the 20-hour limit)
@@ -56,7 +60,12 @@ async function refreshGHLToken() {
         console.log('Successfully refreshed GHL token');
         return ghlAccessToken;
     } catch (error) {
+        if (error.response && error.response.data && error.response.data.error === 'invalid_grant') {
+            console.error('Invalid refresh token. Please update the GHL_REFRESH_TOKEN in your environment variables.');
+            // You might want to implement a notification system here to alert about invalid token
+        }
         console.error('Error refreshing GHL token:', error.message);
+        console.error('Error details:', error.response ? error.response.data : 'No response data');
         throw error;
     }
 }
