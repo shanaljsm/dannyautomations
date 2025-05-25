@@ -189,7 +189,8 @@ async function processWebinarAttendance(attendanceData) {
     attendanceData.forEach(entry => {
         const { email, duration } = entry;
         const currentDuration = attendanceMap.get(email) || 0;
-        attendanceMap.set(email, currentDuration + duration);
+        // Convert seconds to minutes when adding to the map
+        attendanceMap.set(email, currentDuration + Math.floor(duration / 60));
     });
 
     // Filter attendees who watched for 30 minutes or more
@@ -308,7 +309,7 @@ app.post('/webhook/zoom', async (req, res) => {
                 console.log('Using participants from payload');
                 attendanceData = payload.participants.map(participant => ({
                     email: participant.user_email,
-                    duration: Math.floor(participant.duration / 60) // Convert seconds to minutes
+                    duration: participant.duration  // Keep duration in seconds
                 }));
             } else {
                 // Otherwise fetch from Zoom API

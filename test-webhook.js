@@ -30,7 +30,7 @@ const payload = {
                 user_email: 'test.attendee.1@example.com',
                 join_time: '2025-05-25T22:42:02.902Z',
                 leave_time: '2025-05-25T23:42:02.902Z',
-                duration: 60
+                duration: 3600  // 60 minutes in seconds
             },
             {
                 id: 'test-participant-2',
@@ -39,7 +39,7 @@ const payload = {
                 user_email: 'test.attendee.2@example.com',
                 join_time: '2025-05-25T22:42:02.902Z',
                 leave_time: '2025-05-25T23:42:02.902Z',
-                duration: 60
+                duration: 3600  // 60 minutes in seconds
             },
             {
                 id: 'test-participant-3',
@@ -48,7 +48,7 @@ const payload = {
                 user_email: 'test.attendee.3@example.com',
                 join_time: '2025-05-25T22:42:02.902Z',
                 leave_time: '2025-05-25T23:42:02.902Z',
-                duration: 60
+                duration: 3600  // 60 minutes in seconds
             },
             {
                 id: 'test-participant-4',
@@ -57,7 +57,7 @@ const payload = {
                 user_email: 'test.attendee.4@example.com',
                 join_time: '2025-05-25T22:42:02.902Z',
                 leave_time: '2025-05-25T23:42:02.902Z',
-                duration: 60
+                duration: 3600  // 60 minutes in seconds
             },
             {
                 id: 'test-participant-5',
@@ -66,7 +66,7 @@ const payload = {
                 user_email: 'test.attendee.5@example.com',
                 join_time: '2025-05-25T22:42:02.902Z',
                 leave_time: '2025-05-25T23:42:02.902Z',
-                duration: 60
+                duration: 3600  // 60 minutes in seconds
             },
             {
                 id: 'test-participant-6',
@@ -75,7 +75,7 @@ const payload = {
                 user_email: 'test.attendee.6@example.com',
                 join_time: '2025-05-25T22:42:02.902Z',
                 leave_time: '2025-05-25T23:42:02.902Z',
-                duration: 60
+                duration: 3600  // 60 minutes in seconds
             },
             {
                 id: 'test-participant-7',
@@ -84,7 +84,7 @@ const payload = {
                 user_email: 'test.attendee.7@example.com',
                 join_time: '2025-05-25T22:42:02.902Z',
                 leave_time: '2025-05-25T23:42:02.902Z',
-                duration: 60
+                duration: 3600  // 60 minutes in seconds
             },
             {
                 id: 'test-participant-8',
@@ -93,7 +93,7 @@ const payload = {
                 user_email: 'test.attendee.8@example.com',
                 join_time: '2025-05-25T22:42:02.902Z',
                 leave_time: '2025-05-25T23:42:02.902Z',
-                duration: 60
+                duration: 3600  // 60 minutes in seconds
             },
             {
                 id: 'test-participant-9',
@@ -102,7 +102,7 @@ const payload = {
                 user_email: 'test.attendee.9@example.com',
                 join_time: '2025-05-25T22:42:02.902Z',
                 leave_time: '2025-05-25T23:42:02.902Z',
-                duration: 60
+                duration: 3600  // 60 minutes in seconds
             },
             {
                 id: 'test-participant-10',
@@ -111,7 +111,7 @@ const payload = {
                 user_email: 'test.attendee.10@example.com',
                 join_time: '2025-05-25T22:42:02.902Z',
                 leave_time: '2025-05-25T23:42:02.902Z',
-                duration: 60
+                duration: 3600  // 60 minutes in seconds
             }
         ]
     }
