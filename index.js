@@ -19,7 +19,7 @@ const GHL_CLIENT_ID = process.env.GHL_CLIENT_ID;
 const GHL_CLIENT_SECRET = process.env.GHL_CLIENT_SECRET;
 const GHL_REFRESH_TOKEN = process.env.GHL_REFRESH_TOKEN;
 const GHL_COMPANY_ID = process.env.GHL_COMPANY_ID;
-const GHL_API_URL = 'https://rest.gohighlevel.com/v1';
+const GHL_API_URL = 'https://rest.gohighlevel.com/v2';
 
 // GHL Token Management
 let ghlAccessToken = null;
@@ -133,7 +133,10 @@ async function addContactsToGHL(emails) {
         // First, ensure the tag exists
         await axios.post(
             `${GHL_API_URL}/tags/`,
-            { name: tag },
+            { 
+                name: tag,
+                companyId: GHL_COMPANY_ID
+            },
             {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -173,7 +176,7 @@ async function addContactToGHL(email, name, webinarDate) {
         const tag = `Webinar Attendee ${webinarDate}`;
 
         // First, check if contact exists
-        const searchResponse = await axios.get(`https://rest.gohighlevel.com/v1/contacts/lookup?email=${email}`, {
+        const searchResponse = await axios.get(`${GHL_API_URL}/contacts/lookup?email=${email}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -184,10 +187,11 @@ async function addContactToGHL(email, name, webinarDate) {
         if (searchResponse.data.contacts && searchResponse.data.contacts.length > 0) {
             // Contact exists, update it
             contactId = searchResponse.data.contacts[0].id;
-            await axios.put(`https://rest.gohighlevel.com/v1/contacts/${contactId}`, {
+            await axios.put(`${GHL_API_URL}/contacts/${contactId}`, {
                 email: email,
                 name: name,
-                tags: [tag]
+                tags: [tag],
+                companyId: GHL_COMPANY_ID
             }, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -196,10 +200,11 @@ async function addContactToGHL(email, name, webinarDate) {
             });
         } else {
             // Create new contact
-            const createResponse = await axios.post('https://rest.gohighlevel.com/v1/contacts/', {
+            const createResponse = await axios.post(`${GHL_API_URL}/contacts/`, {
                 email: email,
                 name: name,
-                tags: [tag]
+                tags: [tag],
+                companyId: GHL_COMPANY_ID
             }, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
