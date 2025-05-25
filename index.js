@@ -19,7 +19,7 @@ const GHL_CLIENT_ID = process.env.GHL_CLIENT_ID;
 const GHL_CLIENT_SECRET = process.env.GHL_CLIENT_SECRET;
 const GHL_REFRESH_TOKEN = process.env.GHL_REFRESH_TOKEN;
 const GHL_COMPANY_ID = process.env.GHL_COMPANY_ID;
-const GHL_API_URL = 'https://rest.gohighlevel.com/v2';
+const GHL_API_URL = 'https://services.gohighlevel.com/v2';
 
 // GHL Token Management
 let ghlAccessToken = null;
