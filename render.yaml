@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: zoom-webhook-service
+    env: node
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: ZOOM_API_KEY
+        value: ne0KPBrtRnK3ejMdzsO9uw
+      - key: ZOOM_API_SECRET
+        value: pgWL8dT4497Vjhi21QNdzjdwHg9AAG6M
+      - key: ZOOM_ACCOUNT_ID
+        value: DaTVV21nRgK5eOOXVfA_tw
+      - key: ZOOM_WEBHOOK_SECRET
+        value: YWVdUTYxRuS22FUARuUjug
+      - key: ZOOM_VERIFICATION_TOKEN
+        value: mqpueaa_TlavuLnSArWlXQ 
