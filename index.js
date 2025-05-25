@@ -3,6 +3,7 @@ const axios = require('axios');
 const moment = require('moment');
 const express = require('express');
 const crypto = require('crypto');
+const qs = require('querystring');
 const app = express();
 app.use(express.json());
 
@@ -27,12 +28,20 @@ let ghlTokenExpiry = null;
 
 async function refreshGHLToken() {
     try {
-        const response = await axios.post('https://services.leadconnectorhq.com/oauth/token', {
-            client_id: GHL_CLIENT_ID,
-            client_secret: GHL_CLIENT_SECRET,
-            refresh_token: GHL_REFRESH_TOKEN,
-            grant_type: 'refresh_token'
-        });
+        const response = await axios.post(
+            'https://services.leadconnectorhq.com/oauth/token',
+            qs.stringify({
+                client_id: GHL_CLIENT_ID,
+                client_secret: GHL_CLIENT_SECRET,
+                refresh_token: GHL_REFRESH_TOKEN,
+                grant_type: 'refresh_token'
+            }),
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            }
+        );
 
         ghlAccessToken = response.data.access_token;
         // Set token expiry to 19 hours (to refresh before the 20-hour limit)
