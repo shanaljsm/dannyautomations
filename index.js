@@ -308,8 +308,18 @@ app.post('/webhook/zoom', async (req, res) => {
             const webinarId = payload.payload.object.id;
             console.log(`Processing ended webinar: ${webinarId}`);
 
-            // Get attendance data
-            const attendanceData = await getWebinarParticipants(webinarId);
+            // Get attendance data from payload or API
+            let attendanceData;
+            if (payload.payload.participants && Array.isArray(payload.payload.participants)) {
+                console.log('Using participants from payload');
+                attendanceData = payload.payload.participants.map(participant => ({
+                    email: participant.user_email,
+                    duration: participant.duration  // Keep duration in seconds
+                }));
+            } else {
+                console.log('Fetching participants from Zoom API');
+                attendanceData = await getWebinarParticipants(webinarId);
+            }
             console.log('Attendance data:', JSON.stringify(attendanceData, null, 2));
 
             // Process attendance and add to GHL
