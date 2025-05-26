@@ -202,41 +202,53 @@ async function processWebinarAttendance(attendanceData) {
 }
 
 // Function to add contacts to GHL with tag
-async function addContactsToGHL(emails) {
-    const currentDate = moment().format('YYYY-MM-DD');
-    const tag = `webinar-gift-${currentDate}`;
-
+async function addContactsToGHL(contacts) {
     try {
-        const token = await getGHLToken();
-        console.log('GHL Token obtained:', token.substring(0, 10) + '...');
-        console.log('Company ID:', GHL_COMPANY_ID);
-        console.log('Number of emails to process:', emails.length);
+        console.log('Adding contacts to GHL:', JSON.stringify(contacts, null, 2));
+        const token = await refreshGHLToken();
+        const results = [];
 
-        // Prepare bulk payload: an array of contact objects
-        const contacts = emails.map(email => ({
-            email,
-            tags: [tag],
-            companyId: GHL_COMPANY_ID
-        }));
-
-        // Send a single bulk upsert request
-        const response = await axios.post(
-            `${GHL_API_URL}/contacts/bulk-upsert`,
-            { contacts },
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+        for (const contact of contacts) {
+            try {
+                const response = await axios.post(
+                    `https://rest.gohighlevel.com/v1/contacts/upsert/`,
+                    contact,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                console.log(`Successfully added contact ${contact.email} to GHL:`, response.data);
+                results.push({
+                    email: contact.email,
+                    success: true,
+                    data: response.data
+                });
+            } catch (contactError) {
+                console.error(`Error adding contact ${contact.email} to GHL:`, {
+                    error: contactError.message,
+                    response: contactError.response?.data,
+                    status: contactError.response?.status,
+                    headers: contactError.response?.headers
+                });
+                results.push({
+                    email: contact.email,
+                    success: false,
+                    error: contactError.message
+                });
             }
-        );
-        console.log(`Successfully bulk upserted ${emails.length} contacts to GHL with tag: ${tag}`);
-    } catch (error) {
-        console.error('Error in addContactsToGHL:', error.message);
-        if (error.response) {
-            console.error('Response status:', error.response.status);
-            console.error('Response data:', error.response.data);
         }
+
+        return results;
+    } catch (error) {
+        console.error('Error in addContactsToGHL:', {
+            error: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            headers: error.response?.headers
+        });
         throw error;
     }
 }
@@ -279,70 +291,68 @@ app.get('/', (req, res) => {
 // Webhook endpoint for Zoom events
 app.post('/webhook/zoom', async (req, res) => {
     try {
-        // Handle webhook verification
-        if (req.body.event === 'endpoint.url_validation') {
-            const plainToken = req.body.payload.plainToken;
-            const encryptedToken = crypto
-                .createHmac('sha256', ZOOM_WEBHOOK_SECRET)
-                .update(plainToken)
-                .digest('hex');
-            
-            return res.json({
-                plainToken,
-                encryptedToken
+        const signature = req.headers['x-zoom-signature'];
+        const timestamp = req.headers['x-zoom-timestamp'];
+        const payload = req.body;
+
+        // Verify webhook signature
+        if (!verifyWebhookSignature(payload, signature, timestamp)) {
+            console.error('Invalid webhook signature');
+            return res.status(401).json({ error: 'Invalid signature' });
+        }
+
+        // Process the webhook
+        console.log('Received webhook:', JSON.stringify(payload, null, 2));
+
+        if (payload.event === 'webinar.ended') {
+            const webinarId = payload.payload.object.id;
+            console.log(`Processing ended webinar: ${webinarId}`);
+
+            // Get attendance data
+            const attendanceData = await getWebinarParticipants(webinarId);
+            console.log('Attendance data:', JSON.stringify(attendanceData, null, 2));
+
+            // Process attendance and add to GHL
+            const qualifiedAttendees = await processWebinarAttendance(attendanceData);
+            console.log('Qualified attendees:', qualifiedAttendees);
+
+            const results = await addContactsToGHL(qualifiedAttendees.map(email => ({ 
+                email,
+                tags: [`webinar-gift-${moment().format('YYYY-MM-DD')}`],
+                companyId: GHL_COMPANY_ID
+            })));
+
+            const successful = results.filter(r => r.success).length;
+            const failed = results.filter(r => !r.success).length;
+
+            console.log(`Successfully added ${successful} contacts to GHL`);
+            if (failed > 0) {
+                console.error(`Failed to add ${failed} contacts to GHL:`, 
+                    results.filter(r => !r.success).map(r => r.email));
+            }
+
+            return res.json({ 
+                message: 'Webhook processed successfully',
+                results: {
+                    total: results.length,
+                    successful,
+                    failed
+                }
             });
         }
 
-        // Verify webhook signature for other events
-        const signature = req.headers['x-zoom-signature'];
-        const timestamp = req.headers['x-zoom-timestamp'];
-        
-        if (!verifyWebhookSignature(req.body, signature, timestamp)) {
-            console.error('Invalid webhook signature');
-            return res.status(401).send('Invalid signature');
-        }
-
-        const { event, payload } = req.body;
-
-        // Check if this is a webinar ended event
-        if (event === 'webinar.ended') {
-            const webinarId = payload.object.id;
-            console.log(`Webinar ${webinarId} has ended. Processing attendance...`);
-
-            let attendanceData;
-            
-            // If participants are provided in the payload, use them
-            if (payload.participants && Array.isArray(payload.participants)) {
-                console.log('Using participants from payload');
-                attendanceData = payload.participants.map(participant => ({
-                    email: participant.user_email,
-                    duration: participant.duration  // Keep duration in seconds
-                }));
-            } else {
-                // Otherwise fetch from Zoom API
-                console.log('Fetching participants from Zoom API');
-                attendanceData = await getWebinarParticipants(webinarId);
-            }
-            
-            // Process attendance and add to GHL
-            const qualifiedAttendees = await processWebinarAttendance(attendanceData);
-            await addContactsToGHL(qualifiedAttendees);
-            
-            console.log(`Successfully processed ${qualifiedAttendees.length} qualified attendees`);
-        }
-
-        res.status(200).send('Webhook processed successfully');
+        res.json({ message: 'Webhook received' });
     } catch (error) {
-        console.error('Error processing webhook:', error);
-        console.error('Error details:', {
-            message: error.message,
+        console.error('Error processing webhook:', {
+            error: error.message,
             stack: error.stack,
-            response: error.response ? {
-                status: error.response.status,
-                data: error.response.data
-            } : null
+            response: error.response?.data,
+            status: error.response?.status
         });
-        res.status(500).send('Error processing webhook');
+        res.status(500).json({ 
+            error: 'Error processing webhook',
+            details: error.message
+        });
     }
 });
 
