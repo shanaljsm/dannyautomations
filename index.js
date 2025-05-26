@@ -212,34 +212,25 @@ async function addContactsToGHL(emails) {
         console.log('Company ID:', GHL_COMPANY_ID);
         console.log('Number of emails to process:', emails.length);
 
-        // Add contacts with the tag using upsert
-        for (const email of emails) {
-            try {
-                const response = await axios.post(
-                    `${GHL_API_URL}/contacts/upsert`,
-                    {
-                        email,
-                        tags: [tag],
-                        companyId: GHL_COMPANY_ID
-                    },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    }
-                );
-                console.log(`Successfully added contact ${email} to GHL`);
-            } catch (contactError) {
-                console.error(`Error adding contact ${email}:`, contactError.message);
-                if (contactError.response) {
-                    console.error('Response status:', contactError.response.status);
-                    console.error('Response data:', contactError.response.data);
+        // Prepare bulk payload: an array of contact objects
+        const contacts = emails.map(email => ({
+            email,
+            tags: [tag],
+            companyId: GHL_COMPANY_ID
+        }));
+
+        // Send a single bulk upsert request
+        const response = await axios.post(
+            `${GHL_API_URL}/contacts/bulk-upsert`,
+            { contacts },
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
             }
-        }
-
-        console.log(`Successfully added ${emails.length} contacts to GHL with tag: ${tag}`);
+        );
+        console.log(`Successfully bulk upserted ${emails.length} contacts to GHL with tag: ${tag}`);
     } catch (error) {
         console.error('Error in addContactsToGHL:', error.message);
         if (error.response) {
